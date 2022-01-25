@@ -33,20 +33,30 @@ func (u urlInfo) String() string {
 }
 
 func (u urlInfo) countMatch(chInfo chan<- urlInfo) {
+	taskPerRoutine := 10000
 	var wg sync.WaitGroup
-	gorroutines := len(u.content) / 10000
+	splitArray := strings.Split(u.content, " ")
+	remainder := len(splitArray) % taskPerRoutine
+	gorroutines := len(splitArray) / taskPerRoutine
+	if remainder > 0 {
+		gorroutines++
+	}
+	
 	wg.Add(gorroutines)
-	runes := []rune(u.content)
 
 	count := func(s string) {
 		defer wg.Done()
 		u.count += strings.Count(strings.ToLower(s), u.match)
 	}
 
-	for i := 0; i < gorroutines; i++ {
-		startIndex, endIndex := 10000*i, 10000*(i+1)
-		temp := runes[startIndex:endIndex]
-		go count(string(temp))
+	for len(splitArray) > 0 {
+		if taskPerRoutine > len(splitArray) {
+			taskPerRoutine = len(splitArray)
+		}
+
+		strArray := splitArray[0:taskPerRoutine]
+		splitArray = splitArray[taskPerRoutine:]
+		go count(strings.Join(strArray, " "))
 	}
 	go func() {
 		wg.Wait()
